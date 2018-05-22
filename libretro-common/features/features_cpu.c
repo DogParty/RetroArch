@@ -79,7 +79,7 @@
 #include <wiiu/os/time.h>
 #endif
 
-#ifdef SWITCH
+#if defined(__SWITCH__)
 #include <switch.h>
 #endif
 
@@ -181,7 +181,7 @@ retro_perf_tick_t cpu_features_get_perf_counter(void)
    sceRtcGetCurrentTick((uint64_t*)&time_ticks);
 #elif defined(VITA)
    sceRtcGetCurrentTick((SceRtcTick*)&time_ticks);
-#elif defined(_3DS)
+#elif defined(_3DS) || defined(__SWITCH__)
    time_ticks = svcGetSystemTick();
 #elif defined(WIIU)
    time_ticks = OSGetSystemTime();
@@ -218,7 +218,7 @@ retro_time_t cpu_features_get_time_usec(void)
    return sys_time_get_system_time();
 #elif defined(GEKKO)
    return ticks_to_microsecs(gettime());
-#elif defined(SWITCH)
+#elif defined(__SWITCH__)
    return (svcGetSystemTick() * 10) / 192;
 #elif defined(_POSIX_MONOTONIC_CLOCK) || defined(__QNX__) || defined(ANDROID) || defined(__MACH__)
    struct timespec tv = {0};
@@ -504,6 +504,8 @@ unsigned cpu_features_get_core_amount(void)
    return 1;
 #elif defined(WIIU)
    return 3;
+#elif defined(__SWITCH__)
+   return 4;
 #elif defined(_SC_NPROCESSORS_ONLN)
    /* Linux, most UNIX-likes. */
    long ret = sysconf(_SC_NPROCESSORS_ONLN);

@@ -39,6 +39,12 @@
 #include <psp2/kernel/threadmgr.h>
 #elif defined(_3DS)
 #include <3ds.h>
+#elif defined(__SWITCH__)
+#include <switch.h>
+inline int nanosleep(const struct timespec *rqtp, struct timespec *rmtp) {
+   svcSleepThread(rqtp->tv_nsec + (rqtp->tv_sec * 1000000000));
+   return 0;
+}
 #else
 #include <time.h>
 #endif
@@ -90,6 +96,8 @@ static INLINE void retro_sleep(unsigned msec)
 #elif defined(PSP) || defined(VITA)
    sceKernelDelayThread(1000 * msec);
 #elif defined(_3DS)
+   svcSleepThread(1000000 * (s64)msec);
+#elif defined(__SWITCH__)
    svcSleepThread(1000000 * (s64)msec);
 #elif defined(__WINRT__)
 	/* TODO/FIXME */

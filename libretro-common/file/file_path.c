@@ -811,8 +811,13 @@ void path_resolve_realpath(char *buf, size_t size)
     * Technically, PATH_MAX_LENGTH needn't be defined, but we rely on it anyways.
     * POSIX 2008 can automatically allocate for you,
     * but don't rely on that. */
+
+   #if defined (__SWITCH__) 
+      strlcpy(buf, tmp, size);
+   #else
    if (!realpath(tmp, buf))
       strlcpy(buf, tmp, size);
+   #endif
 #endif
 #endif
 }
@@ -1191,7 +1196,11 @@ void fill_pathname_application_path(char *s, size_t len)
 
          snprintf(link_path, sizeof(link_path), "/proc/%u/%s",
                (unsigned)pid, exts[i]);
+         # if defined(__SWITCH__) 
+         ret = -1;
+         #else
          ret = readlink(link_path, s, len - 1);
+         #endif
 
          if (ret >= 0)
          {

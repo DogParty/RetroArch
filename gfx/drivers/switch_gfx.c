@@ -267,7 +267,6 @@ static bool switch_has_windowed(void *data)
 static void switch_free(void *data)
 {
    gfxExit();
-   display_finalize();
 	switch_video_t *sw = data;
 	free(sw);
 }

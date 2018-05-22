@@ -28,7 +28,7 @@ else
 	HAVE_MATERIALUI = 0 # enable later?
 	HAVE_XMB = 0
 	HAVE_STATIC_VIDEO_FILTERS = 1
-	HAVE_STATIC_AUDIO_FILTERS = 1
+	HAVE_STATIC_AUDIO_FILTERS = 0
 	HAVE_MENU = 1
 	HAVE_RUNAHEAD = 1
 
@@ -49,30 +49,65 @@ include $(DEVKITPRO)/libnx/switch_rules
 
 INCDIRS := -I. -Ideps -Ideps/libz -Ilibretro-common/include -Ideps/stb -I/opt/devkitpro/portlibs/switch/include/SDL2/ -I/opt/devkitpro/libnx/include -I/opt/devkitpro/devkitA64/include
 
-LIBDIRS := -L. -L/opt/devkitpro/portlibs/switch/libs -L/opt/devkitpro/libnx/lib -L/opt/devkitpro/devkitA64/lib
+LIBDIRS := ./ /opt/devkitpro/portlibs/switch/libs /opt/devkitpro/libnx/lib /opt/devkitpro/devkitA64/lib
 
-ARCH	:=	-march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE
+ARCH	:=	-march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE -ftls-model=local-exec
 
 CFLAGS	:=	-g -Wall -O2 -ffunction-sections \
-			$(ARCH) $(DEFINES)
-
-CFLAGS	+=	$(INCLUDE) -D__SWITCH__
+			$(ARCH) $(DEFINES) \
+			$(INCLUDE)  $(INCDIRS) -D__SWITCH__
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 
 ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH)  -finline
+LDFLAGS	:=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -finline -Wl,-z,multidefs -Wl,-Map,$(notdir $*.map)
 
-LIBDIRS	:= $(PORTLIBS) $(LIBNX)
+LIBDIRS	+= $(PORTLIBS) $(LIBNX)
 
-LIBS += -lSDL2 -lnx -lm -lstdc++ -lc -lretro_switch
+LIBS += -lSDL2 -lnx -lm -lstdc++ -lc -lretro_switch -lm
 
 LD := aarch64-none-elf-gcc
 
 TARGETS := $(OBJ)
 
-CFLAGS += $(INCDIRS) $(DEFINES) 
+TARGET		:=	$(notdir $(CURDIR))
+BUILD		:=	build
+SOURCES		:=	source
+DATA		:=	data
+INCLUDES	:=	include
+EXEFS_SRC	:=	exefs_src
+#ROMFS	:=	romfs
 
+export BUILD_EXEFS_SRC := $(TOPDIR)/$(EXEFS_SRC)
+
+ifeq ($(strip $(ICON)),)
+	icons := $(wildcard *.jpg)
+	ifneq (,$(findstring $(TARGET).jpg,$(icons)))
+		export APP_ICON := $(TOPDIR)/$(TARGET).jpg
+	else
+		ifneq (,$(findstring icon.jpg,$(icons)))
+			export APP_ICON := $(TOPDIR)/icon.jpg
+		endif
+	endif
+else
+	export APP_ICON := $(TOPDIR)/$(ICON)
+endif
+
+ifeq ($(strip $(NO_ICON)),)
+	export NROFLAGS += --icon=$(APP_ICON)
+endif
+
+ifeq ($(strip $(NO_NACP)),)
+	export NROFLAGS += --nacp=$(CURDIR)/$(TARGET).nacp
+endif
+
+ifneq ($(APP_TITLEID),)
+	export NACPFLAGS += --titleid=$(APP_TITLEID)
+endif
+
+ifneq ($(ROMFS),)
+	export NROFLAGS += --romfsdir=$(CURDIR)/$(ROMFS)
+endif
 
 
 export OUTPUT	:=	$(CURDIR)/$(TARGET)
