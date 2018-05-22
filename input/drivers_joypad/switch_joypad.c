@@ -2,7 +2,7 @@
 #include "../../config.h"
 #endif
 
-#include<libtransistor/nx.h>
+#include<switch.h>
 
 #include "../input_driver.h"
 
@@ -40,7 +40,7 @@ static void switch_joypad_autodetect_add(unsigned autoconf_pad)
 
 static bool switch_joypad_init(void *data)
 {
-   hid_init();
+   hidScanInput();
 
    switch_joypad_autodetect_add(0);
    switch_joypad_autodetect_add(1);
@@ -124,29 +124,14 @@ static bool switch_joypad_query_pad(unsigned pad)
    return pad < MAX_PADS && pad_state[pad];
 }
 
-static void switch_joypad_destroy(void)
-{
-   hid_finalize();
-}
-
 static void switch_joypad_poll(void)
 {
-   hid_controller_t    *controllers  = hid_get_shared_memory()->controllers;
-   hid_controller_t           *cont  = &controllers[0];
-   hid_controller_state_entry_t ent  = cont->main.entries[cont->main.latest_idx];
-   hid_controller_state_entry_t ent8 = (cont+8)->main.entries[(cont+8)->main.latest_idx];
-   pad_state[0] = ent.button_state | ent8.button_state;
-   
-   analog_state[0][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_X]  = ent.left_stick_x / 0x20000;
-   analog_state[0][RETRO_DEVICE_INDEX_ANALOG_LEFT][RETRO_DEVICE_ID_ANALOG_Y]  = ent.left_stick_y / 0x20000;
-   analog_state[0][RETRO_DEVICE_INDEX_ANALOG_RIGHT][RETRO_DEVICE_ID_ANALOG_X] = ent.right_stick_x / 0x20000;
-   analog_state[0][RETRO_DEVICE_INDEX_ANALOG_RIGHT][RETRO_DEVICE_ID_ANALOG_Y] = ent.right_stick_y / 0x20000;
 }
 
 input_device_driver_t switch_joypad = {
 	switch_joypad_init,
 	switch_joypad_query_pad,
-	switch_joypad_destroy,
+	NULL,
 	switch_joypad_button,
 	switch_joypad_get_buttons,
 	switch_joypad_axis,

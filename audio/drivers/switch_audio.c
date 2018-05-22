@@ -17,23 +17,22 @@
 #include <malloc.h>
 #include <stdint.h>
 
-#include<libtransistor/nx.h>
-#include<libtransistor/alloc_pages.h>
+#include <switch.h>
 
 #include "../audio_driver.h"
 #include "../../verbosity.h"
 
 static const int sample_rate           = 48000;
-static const int max_num_samples       = sample_rate;
+static const int max_num_samples       = 48000;
 static const int num_channels          = 2;
-static const size_t sample_buffer_size = ((max_num_samples * num_channels * sizeof(uint16_t)) + 0xfff) & ~0xfff;
+static const size_t sample_buffer_size = ((48000 * 48000 * sizeof(uint16_t)) + 0xfff) & ~0xfff;
 
 typedef struct
 {
-   audio_output_t output;
-   handle_t event;
-   audio_output_buffer_t buffers[3];
-   audio_output_buffer_t *current_buffer;
+   //audio_output_t output;
+ //  handle_t event;
+//   audio_output_buffer_t buffers[3];
+ //  audio_output_buffer_t *current_buffer;
    bool blocking;
    bool is_paused;
    uint64_t last_append;
@@ -42,6 +41,7 @@ typedef struct
 
 static ssize_t switch_audio_write(void *data, const void *buf, size_t size)
 {
+   /*
    size_t to_write     = size;
 	switch_audio_t *swa = (switch_audio_t*) data;
 
@@ -85,6 +85,7 @@ static ssize_t switch_audio_write(void *data, const void *buf, size_t size)
          } else {
             /* no buffer, nonblocking... */
             return 0;
+            /*
          }
       }
 
@@ -117,10 +118,12 @@ static ssize_t switch_audio_write(void *data, const void *buf, size_t size)
 	swa->last_append = svcGetSystemTick();
 	
 	return to_write;
+   */
 }
 
 static bool switch_audio_stop(void *data)
 {
+   /*
    switch_audio_t *swa = (switch_audio_t*) data;
    if (!swa)
       return false;
@@ -131,12 +134,13 @@ static bool switch_audio_stop(void *data)
    }
 
    swa->is_paused = true;
-   return true;
+   return true; */
+   return false;
 }
 
 static bool switch_audio_start(void *data, bool is_shutdown)
 {
-   switch_audio_t *swa = (switch_audio_t*) data;
+/*   switch_audio_t *swa = (switch_audio_t*) data;
 
    if(swa->is_paused) {
 	   if (audio_ipc_output_start(&swa->output) != RESULT_OK)
@@ -144,7 +148,8 @@ static bool switch_audio_start(void *data, bool is_shutdown)
    }
 
    swa->is_paused = false;
-   return true;
+   return true; */
+   return false;
 }
 
 static bool switch_audio_alive(void *data)
@@ -157,11 +162,12 @@ static bool switch_audio_alive(void *data)
 
 static void switch_audio_free(void *data)
 {
+   
    switch_audio_t *swa = (switch_audio_t*) data;
-
+/*
    audio_ipc_output_close(&swa->output);
-   audio_ipc_finalize();
-   free(swa);
+   audio_ipc_finalize(); */
+   free(swa); 
 }
 
 static bool switch_audio_use_float(void *data)
@@ -172,12 +178,15 @@ static bool switch_audio_use_float(void *data)
 
 static size_t switch_audio_write_avail(void *data)
 {
+   /*
    switch_audio_t *swa = (switch_audio_t*) data;
 
    if (!swa || !swa->current_buffer)
       return 0;
 
-   return swa->current_buffer->buffer_size;
+   return swa->current_buffer->buffer_size; */
+
+   return 0;
 }
 
 static void switch_audio_set_nonblock_state(void *data, bool state)
@@ -193,7 +202,7 @@ static void *switch_audio_init(const char *device,
                                unsigned block_frames,
                                unsigned *new_rate)
 {
-   result_t r;
+  /* result_t r;
    unsigned i;
    char names[8][0x20];
    uint32_t num_names  = 0;
@@ -274,7 +283,8 @@ fail_audio_output:
 fail_audio_ipc:
    audio_ipc_finalize();
 fail:
-   free(swa);
+   free(swa); 
+   */
    return NULL;
 }
 

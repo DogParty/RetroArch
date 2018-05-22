@@ -40,26 +40,77 @@ else
 endif
 
 
-ifeq ($(strip $(LIBTRANSISTOR_HOME)),)
-$(error "Please set LIBTRANSISTOR_HOME in your environment. export LIBTRANSISTOR_HOME=<path t>o libtransistor")
+ifeq ($(strip $(DEVKITPRO)),)
+$(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>/devkitpro")
 endif
 
-include $(LIBTRANSISTOR_HOME)/libtransistor.mk
+TOPDIR ?= $(CURDIR)
+include $(DEVKITPRO)/libnx/switch_rules
 
-INCDIRS := -I. -Ideps -Ideps/libz -Ilibretro-common/include -Ideps/stb -I$(LIBTRANSISTOR_HOME)/build/sdl2_install/include/SDL2/
-LIBDIRS := -L.
+INCDIRS := -I. -Ideps -Ideps/libz -Ilibretro-common/include -Ideps/stb -I/opt/devkitpro/portlibs/switch/include/SDL2/ -I/opt/devkitpro/libnx/include -I/opt/devkitpro/devkitA64/include
 
-TARGETS := $(TARGET).nro
+LIBDIRS := -L. -L/opt/devkitpro/portlibs/switch/libs -L/opt/devkitpro/libnx/lib -L/opt/devkitpro/devkitA64/lib
 
-CFLAGS += $(INCDIRS) $(DEFINES) -Wunused-command-line-argument
+ARCH	:=	-march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE
 
-all: $(TARGETS)
+CFLAGS	:=	-g -Wall -O2 -ffunction-sections \
+			$(ARCH) $(DEFINES)
 
-$(TARGET).nro.so: $(OBJ) libretro_switch.a fs.squashfs.o $(LIBTRANSISTOR_NRO_LIB) $(LIBTRANSISTOR_COMMON_LIBS)
-	$(LD) $(LD_FLAGS) --allow-multiple-definition -o $@ $(OBJ) libretro_switch.a fs.squashfs.o $(LIBTRANSISTOR_NRO_LDFLAGS) -lm
+CFLAGS	+=	$(INCLUDE) -D__SWITCH__
+
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
+
+ASFLAGS	:=	-g $(ARCH)
+LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH)  -finline
+
+LIBDIRS	:= $(PORTLIBS) $(LIBNX)
+
+LIBS += -lSDL2 -lnx -lm -lstdc++ -lc -lretro_switch
+
+LD := aarch64-none-elf-gcc
+
+TARGETS := $(OBJ)
+
+CFLAGS += $(INCDIRS) $(DEFINES) 
+
+
+
+export OUTPUT	:=	$(CURDIR)/$(TARGET)
+export TOPDIR	:=	$(CURDIR)
+
+export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
+			$(foreach dir,$(DATA),$(CURDIR)/$(dir))
+
+export DEPSDIR	:=	$(CURDIR)/$(BUILD)
+
+export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+			-I$(CURDIR)/$(BUILD)
+
+export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib) -L$(CURDIR)
+
+
+# all: $(TARGETS).elf
+
+all	:	$(OUTPUT).pfs0 $(OUTPUT).nro
+
+$(OUTPUT).pfs0	:	$(OUTPUT).nso
+
+$(OUTPUT).nso	:	$(OUTPUT).elf
+
+ifeq ($(strip $(NO_NACP)),)
+$(OUTPUT).nro	:	$(OUTPUT).elf $(OUTPUT).nacp
+else
+$(OUTPUT).nro	:	$(OUTPUT).elf
+endif
+
+$(OUTPUT).elf	:	 libretro_switch.a $(OBJ)
+
+$(TARGET).nro.so: $(OBJ) libretro_switch.a fs.squashfs.o $(LIBS)
+	$(CC) $(LDFLAGS) --allow-multiple-definition -o $@ $(OBJ) libretro_switch.a fs.squashfs.o $(LDFLAGS) -lm
 
 %.squashfs.o: %.squashfs
-	$(LD) -s -r -b binary -m aarch64elf -T $(LIBTRANSISTOR_HOME)/fs.T -o $@ $<
+	$(CC) -s -r -b binary -m aarch64elf -o $@ $<
 
 fs.squashfs: fs/*
 	mksquashfs $^ $@ -comp lz4 -nopad -noappend
