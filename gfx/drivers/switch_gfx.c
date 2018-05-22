@@ -81,10 +81,10 @@ static void *switch_init(const video_info_t *video,
 
    sw->vp.x           = 0;
    sw->vp.y           = 0;
-   sw->vp.width       = 1280;
-   sw->vp.height      = 720;
-   sw->vp.full_width  = 1280;
-   sw->vp.full_height = 720;
+   sw->vp.width       = width;
+   sw->vp.height      = height;
+   sw->vp.full_width  = width;
+   sw->vp.full_height = height;
    video_driver_set_size(&sw->vp.width, &sw->vp.height);
 
    sw->rgb32 = video->rgb32;
@@ -104,10 +104,9 @@ static bool switch_frame(void *data, const void *frame,
 	
    unsigned x, y;
    int tgtw, tgth, centerx, centery;
-  // uint32 *out_buffer   = NULL;
    switch_video_t *sw     = data;
-   int xsf                = 1280 / width;
-   int ysf                = 720  / height;
+   int xsf                = sw->width / width;
+   int ysf                = sw->height  / height;
    int sf                 = xsf;
 
    if (ysf < sf)
@@ -115,15 +114,15 @@ static bool switch_frame(void *data, const void *frame,
 
    tgtw                   = width * sf;
    tgth                   = height * sf;
-   centerx                = (1280-tgtw)/2;
-   centery                = (720-tgth)/2;
+   centerx                = (sw->width-tgtw)/2;
+   centery                = (sw->height-tgth)/2;
 
    // clear image to black
-   for(y = 0; y < 720; y++)
+   for(y = 0; y < sw->height; y++)
    {
-      for(x = 0; x < 1280; x++)
+      for(x = 0; x < sw->width; x++)
       {
-         sw->image[y*1280+x] = 0xFF000000;
+         sw->image[y*sw->width+x] = 0xFF000000;
       }
    }
 
@@ -140,7 +139,7 @@ static bool switch_frame(void *data, const void *frame,
 			   
 			   sw->scaler.out_width = tgtw;
 			   sw->scaler.out_height = tgth;
-			   sw->scaler.out_stride = 1280 * sizeof(uint32_t);
+			   sw->scaler.out_stride = sw->width * sizeof(uint32_t);
 			   sw->scaler.out_fmt = SCALER_FMT_ABGR8888;
 			   
 			   sw->scaler.scaler_type = SCALER_TYPE_POINT;
@@ -154,7 +153,7 @@ static bool switch_frame(void *data, const void *frame,
 			   sw->last_height = height;
 		   }
 
-	   scaler_ctx_scale(&sw->scaler, sw->image + (centery * 1280) + centerx, frame);
+	   scaler_ctx_scale(&sw->scaler, sw->image + (centery * sw->width) + centerx, frame);
    }
 
 #if defined(HAVE_MENU)
@@ -169,8 +168,8 @@ static bool switch_frame(void *data, const void *frame,
          {
 #endif
 	         scaler_ctx_scale(&sw->menu_texture.scaler, sw->image +
-	                          ((720-sw->menu_texture.tgth)/2)*1280 +
-	                          ((1280-sw->menu_texture.tgtw)/2), sw->menu_texture.pixels);
+	                          ((sw->height-sw->menu_texture.tgth)/2)*sw->width +
+	                          ((sw->width-sw->menu_texture.tgtw)/2), sw->menu_texture.pixels);
 #if 0
          }
          else
@@ -202,39 +201,34 @@ static bool switch_frame(void *data, const void *frame,
 
    if (msg && strlen(msg) > 0)
       RARCH_LOG("message: %s\n", msg);
+
    sw->framebuffer = (u32*) gfxGetFramebuffer((u32*)&width, (u32*)&height);
-
-  // r = surface_dequeue_buffer(&sw->framebuffer, &out_buffer);
-
-   
-   //gfx_slow_swizzling_blit(out_buffer, sw->image, 1280, 720, 0, 0);
-   
-  // r = surface_queue_buffer(&sw->framebuffer);
-   
-
-         if(sw->cnt==60)
-        {
-            sw->cnt=0;
-        }
-        else
-        {
-            sw->cnt++;
-        }
-           u32 frameX, frameY, pos;
-        for (frameY=0; frameY<height; frameY++)//Access the buffer linearly.
-        {
-            for (frameX=0; frameX<width; frameX++)
-            {
-                pos = frameY * width + frameX;
-                sw->framebuffer[pos] = RGBA8_MAXALPHA(sw->image[pos*3+0]+(sw->cnt*4), sw->image[pos*3+1], sw->image[pos*3+2]);
-            }
-        }
-
-                gfxFlushBuffers();
-        gfxSwapBuffers();
    if (sw->vsync)
       gfxWaitForVsync();
    svcSleepThread(10000);
+
+   if(sw->cnt==60)
+   {
+      sw->cnt=0;
+   }
+   else
+   {
+      sw->cnt++;
+   }
+   
+   u32 frameX, frameY, pos;
+   for (frameY=0; frameY<height; frameY++)
+   {
+      for (frameX=0; frameX<width; frameX++)
+      {
+          pos = frameY * width + frameX;
+          sw->framebuffer[pos] = RGBA8_MAXALPHA(sw->image[pos*3+0]+(sw->cnt*4), sw->image[pos*3+1], sw->image[pos*3+2]);
+      }
+   }
+
+   gfxFlushBuffers();
+   gfxSwapBuffers();
+
    last_frame = svcGetSystemTick();
    return true;
 }
@@ -273,7 +267,7 @@ static bool switch_has_windowed(void *data)
 static void switch_free(void *data)
 {
    gfxExit();
-
+   display_finalize();
 	switch_video_t *sw = data;
 	free(sw);
 }
@@ -330,8 +324,8 @@ static void switch_set_texture_frame(
          return;
       }
 
-      int xsf                = 1280 / width;
-      int ysf                = 720  / height;
+      int xsf                = sw->width / width;
+      int ysf                = sw->height  / height;
       int sf                 = xsf;
       
       if (ysf < sf)
@@ -352,7 +346,7 @@ static void switch_set_texture_frame(
 
       sctx->out_width = sw->menu_texture.tgtw;
       sctx->out_height = sw->menu_texture.tgth;
-      sctx->out_stride = 1280 * 4;
+      sctx->out_stride = sw->width * 4;
       sctx->out_fmt = SCALER_FMT_ABGR8888;
 
       sctx->scaler_type = SCALER_TYPE_POINT;
