@@ -71,7 +71,7 @@ LD := aarch64-none-elf-gcc
 TARGETS := $(OBJ)
 
 TARGET		:=	$(notdir $(CURDIR))
-BUILD		:=	build
+BUILD		:=	
 SOURCES		:=	source
 DATA		:=	data
 INCLUDES	:=	include
